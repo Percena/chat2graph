@@ -2,7 +2,7 @@ import os
 from typing import Any, Dict, List, Optional
 import uuid
 
-from mcp.types import ContentBlock
+from app.core.toolkit.mcp.types_compat import ContentBlock
 
 from app.core.model.task import ToolCallContext
 from app.core.service.toolkit_service import ToolkitService

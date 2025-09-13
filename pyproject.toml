@@ -22,6 +22,15 @@ sqlalchemy-utils = "^0.41.2"
 matplotlib = "^3.10.3"
 networkx = "^3.4.2"
 pyfiglet = "^1.0.3"
+google-generativeai = "^0.8.0"
+google-genai = "^1.0.0"
+python-magic = "^0.4.27"
+requests = "^2.32.3"
+memfuse = "*"
+## Pin MCP below versions that removed ContentBlock
+# We explicitly depend on mcp to override transitive ranges from extras
+# and to avoid the breaking change where ContentBlock was removed.
+mcp = { version = ">=1.4.1" }
 
 [[tool.poetry.source]]
 name = "PyPI"

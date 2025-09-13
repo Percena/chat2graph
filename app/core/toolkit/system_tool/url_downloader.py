@@ -6,7 +6,10 @@ import tempfile
 from typing import Optional, Union
 from urllib.parse import urlparse
 
-import magic
+try:
+    import magic  # type: ignore
+except Exception:  # pragma: no cover - optional dependency
+    magic = None  # type: ignore
 import requests
 
 from app.core.toolkit.tool import Tool
@@ -81,8 +84,21 @@ class UrlDownloaderTool(Tool):
 
             if downloaded_path:
                 temp_file_no_ext_path = downloaded_path
-                mime_type = magic.from_file(temp_file_no_ext_path, mime=True)
-                extension = mimetypes.guess_extension(mime_type)
+                mime_type = None
+                extension = None
+
+                # Try python-magic first if available for accurate MIME detection
+                try:
+                    if magic:
+                        mime_type = magic.from_file(temp_file_no_ext_path, mime=True)
+                except Exception:
+                    mime_type = None
+
+                # Derive extension from detected MIME
+                if mime_type:
+                    extension = mimetypes.guess_extension(mime_type)
+
+                # Fallback: try to infer from URL path
                 if not extension:
                     _, ext_from_url = os.path.splitext(urlparse(url).path)
                     extension = ext_from_url if ext_from_url else ".bin"

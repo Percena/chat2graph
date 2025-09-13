@@ -1,6 +1,6 @@
 from typing import TYPE_CHECKING, Any, Callable, List, cast
 
-from mcp.types import ContentBlock
+from app.core.toolkit.mcp.types_compat import ContentBlock
 
 from app.core.common.type import ToolType
 from app.core.model.task import ToolCallContext

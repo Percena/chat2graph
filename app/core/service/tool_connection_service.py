@@ -1,6 +1,6 @@
 from typing import Dict
 
-from git import Optional
+from typing import Optional
 
 from app.core.common.singleton import Singleton
 from app.core.model.task import ToolCallContext
