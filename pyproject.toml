@@ -12,11 +12,12 @@ python = ">=3.10,<3.12"
 uv = "^0.8.0"
 openai = "^1.86.0"
 litellm = {extras = ["proxy"], version = "^1.72.6"} # pip install "aiohttp>=3.12.13" # litellm has conflict with dbgpt which requires aiohttp = "3.8.4"
+# aiohttp version managed in build.sh to handle conflicts between litellm and dbgpt
 pydantic = "^2.11.7"
 typing-inspect = ">=0.9.0"
 pytest-asyncio = "^1.0.0"
 chromadb = "^1.0.12"
-neo4j = "^5.28.1"
+neo4j = "^5.28.2"
 sqlalchemy-utils = "^0.41.2"
 matplotlib = "^3.10.3"
 networkx = "^3.4.2"
@@ -25,7 +26,7 @@ pyfiglet = "^1.0.3"
 playwright = "^1.53.0"
 python-magic = "^0.4.27"
 google-generativeai = "^0.8.5"
-google-genai= "^1.36.0"
+google-genai = "^1.36.0"
 datasets = "^4.0.0"
 
 [[tool.poetry.source]]
@@ -57,8 +58,9 @@ pytest-cov = "6.2.1"
 pytest-mock = "^3.14.1"
 
 [tool.poetry.group.db-gpt.dependencies]
-dbgpt = { version = "0.7.3", extras = ["agent", "simple_framework", "framework"] }
-dbgpt-ext = { version = "0.7.3", extras = ["rag", "graph_rag", "storage_chromadb"] }
+# dbgpt dependencies are installed via pip in build.sh to handle version conflicts
+# dbgpt = { version = "0.7.3", extras = ["agent", "simple_framework", "framework"] }
+# dbgpt-ext = { version = "0.7.3", extras = ["rag", "graph_rag", "storage_chromadb"] }
 
 [tool.ruff]
 line-length = 100

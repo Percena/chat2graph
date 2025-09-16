@@ -1,4 +1,10 @@
 import os
+import sys
+
+# Add project root to Python path
+project_root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+if project_root not in sys.path:
+    sys.path.insert(0, project_root)
 
 from flask import Flask, send_from_directory
 from flask_cors import CORS  # type: ignore

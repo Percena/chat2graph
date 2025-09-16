@@ -52,16 +52,20 @@ install_python_extras() {
   uv tool install --force "git+https://github.com/chat2graph/browser-use.git@feat/add-pdf-printer#egg=browser-use[cli]" --trusted-host pypi.org --trusted-host files.pythonhosted.org --trusted-host github.com || fatal "Failed to install browser-use"
 }
 
-# TODO: resolve dependency conflict resolution
-# temporary workaround for aiohttp version conflicts until proper resolution in pyproject.toml
+# Handle dependency conflicts and ensure all required packages are installed
 handle_dependency_conflicts() {
-  #TODO: Remove this workaround after pyproject.toml can resolve the conflict
-
-  # Force reinstall specific aiohttp version while downgrading ERROR messages to WARNING
-  # Design Principles:
-  # 1. Preserve full installation output (no information hidden)
-  # 2. Convert ERROR to WARNING to prevent misleading appearance of failure
-  info "Resolving aiohttp version conflict..."
+  info "Resolving dependency conflicts and installing additional packages..."
+  
+  # Install additional required packages that may not be in poetry dependencies
+  info "Installing dbgpt packages..."
+  pip install --trusted-host pypi.org --trusted-host files.pythonhosted.org \
+    'dbgpt[agent,simple_framework,framework]==0.7.3' \
+    'dbgpt-ext[rag,graph_rag,storage_chromadb]==0.7.3' \
+    2>&1 | sed 's/ERROR/WARNING/g'
+  
+  # Force reinstall aiohttp version compatible with litellm after dbgpt installation
+  # This must be done AFTER dbgpt installation since dbgpt downgrades aiohttp
+  info "Final aiohttp version resolution for litellm compatibility..."
   local target_aiohttp_version="3.12.13"
   pip install --force-reinstall "aiohttp==$target_aiohttp_version" --trusted-host pypi.org --trusted-host files.pythonhosted.org 2>&1 | sed 's/ERROR/WARNING/g'
 }
