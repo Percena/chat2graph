@@ -124,7 +124,7 @@ def process_single_sample(
     os.environ.setdefault("CHAT2GRAPH_DISABLE_KB", "1")
 
     # --- setup logging ---
-    log_dir = Path(project_root_path) / "test/benchmark/gaia/running_logs"
+    log_dir = Path(project_root_path) / "test/benchmark/gaia/logs/agent"
     log_dir.mkdir(exist_ok=True)
     log_file_path = log_dir / f"gaia_run_{datetime.now().strftime('%Y%m%d_%H%M%S')}_{task_id}.log"
 

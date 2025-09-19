@@ -12,7 +12,9 @@ import json
 import os
 from dataclasses import dataclass
 from pathlib import Path
+import shutil
 from typing import Optional
+import sys
 
 from app.core.common.logger import Chat2GraphLogger
 from app.core.model.task import ToolCallContext
@@ -20,6 +22,24 @@ from app.core.toolkit.tool import Tool
 
 
 logger = Chat2GraphLogger.get_logger(__name__)
+
+# Resolve Chat2Graph repo root and standard output folders
+def _find_repo_root(start: Path) -> Path:
+    cur = start
+    for _ in range(10):
+        if (cur / ".git").exists() or (cur / "pyproject.toml").exists():
+            return cur
+        if cur.parent == cur:
+            break
+        cur = cur.parent
+    return start
+
+_repo_root = _find_repo_root(Path(__file__).resolve().parent)
+_gaia_base_dir = _repo_root / "test/benchmark/gaia"
+_logs_external_dir = _gaia_base_dir / "logs" / "external"
+_artifacts_external_dir = _gaia_base_dir / "artifacts" / "external"
+_logs_external_dir.mkdir(parents=True, exist_ok=True)
+_artifacts_external_dir.mkdir(parents=True, exist_ok=True)
 
 
 @dataclass
@@ -47,7 +67,7 @@ async def run_gaia_agent(
     repo_path = (
         repo_path
         or os.getenv("GAIA_AGENT_PATH")
-        or os.path.expanduser("~/path/to/repo")
+        or str(_repo_root / "gaia_agent")
     )
     exp_id = exp_id or f"gaia_{tool_call_ctx.job_id}_{tool_call_ctx.operator_id}"
 
@@ -59,12 +79,11 @@ async def run_gaia_agent(
     if not dry_run and not oneclick.exists():
         raise FileNotFoundError(f"Cannot find gaia_oneclick.py at {oneclick}")
 
-    output_jsonl = repo / f"data/output_{exp_id}.jsonl"
+    # Write artifacts under Chat2Graph repo for consistent analysis
+    output_jsonl = (_artifacts_external_dir / f"output_{exp_id}.jsonl").resolve()
 
-    c2g_log_dir = Path("test/benchmark/gaia/running_logs")
-    c2g_log_dir.mkdir(parents=True, exist_ok=True)
-    c2g_log_file = c2g_log_dir / f"log_{exp_id}.log"
-    lock_file = c2g_log_dir / f"log_{exp_id}.lock"
+    c2g_log_file = _logs_external_dir / f"log_{exp_id}.log"
+    lock_file = _logs_external_dir / f"log_{exp_id}.lock"
 
     if output_jsonl.exists():
         try:
@@ -90,12 +109,12 @@ async def run_gaia_agent(
 
     env = os.environ.copy()
     env["PYTHONPATH"] = str(repo) + os.pathsep + env.get("PYTHONPATH", "")
+    if question_hint:
+        env["GAIA_AGENT_QUESTION_HINT"] = str(question_hint)
 
+    # Use current Python interpreter to avoid external project tooling requirements
     cmd = [
-        "uv",
-        "run",
-        "--active",
-        "python",
+        sys.executable,
         str(oneclick),
         "run",
         "--exp_id",
@@ -246,6 +265,17 @@ async def run_gaia_agent(
                 continue
             obj = json.loads(line)
             answer = obj.get("response") or obj.get("final_output") or ""
+            # Best-effort copy CSV report from external repo if it exists
+            try:
+                for candidate in [
+                    Path(repo_path) / "data" / f"report_{exp_id}.csv",
+                    Path(repo_path) / "data" / "tmp" / f"report_{exp_id}.csv",
+                ]:
+                    if candidate.exists():
+                        shutil.copy2(candidate, _artifacts_external_dir / candidate.name)
+                        break
+            except Exception:
+                pass
             return str(answer).strip()
 
     raise RuntimeError(f"No rows in exported JSONL: {output_jsonl}")
@@ -269,4 +299,3 @@ class GaiaAgentBridgeTool(Tool):
             ),
             function=run_gaia_agent,
         )
-

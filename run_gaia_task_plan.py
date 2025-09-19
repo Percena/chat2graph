@@ -20,8 +20,13 @@ from test.benchmark.gaia.run_hf_gaia_test import (
 
 # Resolve project root to the repository root (this file lives at repo root)
 project_root = os.path.abspath(os.path.dirname(__file__))
-log_dir = Path(project_root) / "test/benchmark/gaia/running_logs"
-log_dir.mkdir(exist_ok=True)
+_gaia_base_dir = Path(project_root) / "test/benchmark/gaia"
+logs_agent_dir = _gaia_base_dir / "logs" / "agent"
+logs_external_dir = _gaia_base_dir / "logs" / "external"
+artifacts_external_dir = _gaia_base_dir / "artifacts" / "external"
+results_dir = _gaia_base_dir / "results"
+for d in (logs_agent_dir, logs_external_dir, artifacts_external_dir, results_dir):
+    d.mkdir(parents=True, exist_ok=True)
 
 
 def parse_task_plan(csv_path: Path) -> list[Tuple[str, bool]]:
@@ -235,10 +240,10 @@ def main() -> None:
                 results.append(result)
                 state = "✅" if result.get("is_correct") else "❌"
                 print(f"{state} Finished task {tid} (memfuse={'on' if memfuse_enabled else 'off'})")
-                # Quick pointers to artifacts
-                print(f"  ↳ log: test/benchmark/gaia/running_logs/log_{result['exp_id']}.log")
-                print(f"  ↳ jsonl: <gaia-agent>/data/output_{result['exp_id']}.jsonl")
-                print(f"  ↳ csv: <gaia-agent>/data/report_{result['exp_id']}.csv")
+                # Quick pointers to artifacts (standardized)
+                print(f"  ↳ external log: {logs_external_dir}/log_{result['exp_id']}.log")
+                print(f"  ↳ artifacts jsonl: {artifacts_external_dir}/output_{result['exp_id']}.jsonl")
+                print(f"  ↳ artifacts csv: {artifacts_external_dir}/report_{result['exp_id']}.csv (if available)")
             except Exception as exc:
                 print(f"❌ Task {tid} (memfuse={'on' if memfuse_enabled else 'off'}) failed: {exc}")
                 results.append(
@@ -252,7 +257,9 @@ def main() -> None:
                 )
 
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    output_path = log_dir / f"gaia_results_{args.split}_level-{args.output_tag}_{timestamp}.jsonl"
+    # Simplify result filename: results_<tag>_<ts>.jsonl
+    safe_tag = str(args.output_tag or "run").replace(" ", "-")
+    output_path = results_dir / f"results_{safe_tag}_{timestamp}.jsonl"
 
     stats = defaultdict(lambda: {"total": 0, "correct": 0})
     with output_path.open("w", encoding="utf-8") as handle:
@@ -296,7 +303,9 @@ def main() -> None:
         print(f"  {state} task_id={tid} | answer={ma} | gt={gt}")
 
     print(f"\n📄 Results written to: {output_path}")
-    print(f"🪵 Detailed per-task logs: {log_dir}")
+    print(f"🪵 Chat2Graph per-task logs: {logs_agent_dir}")
+    print(f"🪵 External GAIA agent logs: {logs_external_dir}")
+    print(f"📦 External artifacts (jsonl/csv): {artifacts_external_dir}")
     print("=" * 50)
 
 
