@@ -1,3 +1,6 @@
+import argparse
+import os
+import shutil
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from pathlib import Path
 
@@ -5,6 +8,7 @@ from datasets import (
     load_dataset,  # type: ignore
     load_from_disk,  # type: ignore
 )
+from dotenv import load_dotenv
 from huggingface_hub import hf_hub_download
 from huggingface_hub.utils import HfHubHTTPError
 from tqdm import tqdm  # type: ignore
@@ -13,13 +17,13 @@ from tqdm import tqdm  # type: ignore
 project_root = Path(__file__).resolve().parent.parent.parent.parent
 local_data_path = project_root / ".gaia_tmp" / "gaia_dataset"
 REPO_ID = "gaia-benchmark/GAIA"
+GAIA_CONFIG = "2023_all"  # default config to pull full 2023 dataset
 # number of threads for parallel download
 MAX_WORKERS = 10
 # target download directory (must align with run_test.py search path)
 DOWNLOAD_CACHE_DIR = Path.home() / ".cache" / "huggingface" / "datasets" / "downloads"
 
 
-# download function using hf_hub_download
 def download_file_with_hub(file_name: str, split: str, pbar: tqdm):
     """Use huggingface_hub to download a single file and update the progress bar."""
     if not file_name:
@@ -27,8 +31,8 @@ def download_file_with_hub(file_name: str, split: str, pbar: tqdm):
         return "skipped_empty_name"
 
     # check if file already exists in target cache directory
-    # note: hf_hub_download downloads to its own cache; we use local_dir to specify desired location
-    target_path = DOWNLOAD_CACHE_DIR / file_name
+    # note: we use local_dir to specify the desired location (expected by run_hf_gaia_test)
+    target_path = DOWNLOAD_CACHE_DIR / "2023" / split / file_name
     if target_path.exists() and target_path.stat().st_size > 0:
         pbar.update(1)
         return "skipped_exists"
@@ -61,14 +65,31 @@ def download_file_with_hub(file_name: str, split: str, pbar: tqdm):
 
 def main():
     """Main function to orchestrate the dataset download and verification."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        "--force",
+        action="store_true",
+        help="Force re-download metadata (delete and recreate local dataset cache).",
+    )
+    args = parser.parse_args()
+
+    # load .env so HF token is available to hub/datasets
+    load_dotenv(override=True)
+    if not os.getenv("HF_TOKEN") and not os.getenv("HUGGING_FACE_HUB_TOKEN"):
+        print("⚠️  HF auth token not found in environment. Public datasets may still work.")
+
     print(f"📁 loading dataset metadata from local path: {local_data_path}")
+    if args.force and local_data_path.exists():
+        print("  - --force specified: removing existing local dataset cache...")
+        shutil.rmtree(local_data_path, ignore_errors=True)
+
     if not local_data_path.exists():
         print(f"  - local dataset path not found: '{local_data_path}'")
         print("  - downloading from hub...")
-
-        dataset = load_dataset(REPO_ID)
+        dataset = load_dataset(REPO_ID, GAIA_CONFIG)
         dataset.save_to_disk(str(local_data_path))
         print(f"✅ dataset metadata downloaded and saved to {local_data_path}")
+
     dataset = load_from_disk(str(local_data_path))
     print("✅ dataset metadata loaded successfully.")
 

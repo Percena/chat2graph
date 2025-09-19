@@ -9,7 +9,7 @@ __pycache__
 
 # ignore db instances
 **/*.db
-
+**/running_logs/
 app/server/web/*
 web/node_modules
 web/.env.local

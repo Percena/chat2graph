@@ -30,9 +30,21 @@ class BuiltinLeaderState(LeaderState):
         return list(self._expert_instances.values())
 
     def create_expert(self, agent_config: AgentConfig) -> Expert:
-        """Add an expert profile to the registry."""
+        """Create an expert. Honor profile.expert_class if provided."""
         with self._expert_creation_lock:
-            expert = Expert(agent_config=agent_config)
+            expert = None
+            try:
+                expert_class_path = getattr(agent_config.profile, "expert_class", None)
+                if isinstance(expert_class_path, str) and "." in expert_class_path:
+                    module_path, class_name = expert_class_path.rsplit(".", 1)
+                    module = __import__(module_path, fromlist=[class_name])
+                    expert_cls = getattr(module, class_name)
+                    if issubclass(expert_cls, Expert):
+                        expert = expert_cls(agent_config=agent_config)
+            except Exception:
+                expert = None
+            if expert is None:
+                expert = Expert(agent_config=agent_config)
             expert_id = expert.get_id()
             self._expert_instances[expert_id] = expert
             return expert

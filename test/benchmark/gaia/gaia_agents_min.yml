@@ -1,0 +1,57 @@
+app:
+  name: "GAIA-Agent-Min"
+  desc: "Minimal pipeline that bridges to external GAIA agent only"
+  version: "0.1.0"
+
+plugin:
+  workflow_platform: "DBGPT"
+
+reasoner:
+  type: "DUAL"
+
+tools:
+  - &gaia_tool
+    name: "GaiaAgentBridgeTool"
+    type: "LOCAL_TOOL"
+    desc: "Bridge to external GAIA agent runner"
+    module_path: "app.core.toolkit.system_tool.gaia_agent_bridge_tool"
+
+actions:
+  - &gaia_action
+    name: "gaia agent action"
+    desc: "Call GAIA agent bridge tool"
+    tools: [*gaia_tool]
+
+toolkit:
+  - [*gaia_action]
+
+operators:
+  - &gaia_operator
+    instruction: |
+      Call the GAIA agent bridge tool to get final answer.
+      Keep logs and artifacts aligned by exp_id.
+    output_schema: |
+      output: final answer string
+    actions: [*gaia_action]
+
+experts:
+  - profile:
+      name: "GaiaAgentExpert"
+      desc: "Bridge to external GAIA agent"
+      expert_class: "app.core.agent.gaia_agent_expert.GaiaAgentExpert"
+    reasoner:
+      actor_name: "GaiaAgentActor"
+      thinker_name: "GaiaAgentThinker"
+    workflow:
+      - [*gaia_operator]
+
+leader:
+  profile:
+    name: "GAIA-Leader-Min"
+    desc: "Minimal orchestrator"
+  actions: []
+
+knowledgebase: {}
+memory: {}
+env: {}
+

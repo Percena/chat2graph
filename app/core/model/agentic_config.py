@@ -56,6 +56,7 @@ class ProfileConfig:
 
     name: str
     desc: str = ""
+    expert_class: Optional[str] = None
 
 
 @dataclass
@@ -224,7 +225,9 @@ class AgenticConfig:
             # profile configuration
             profile_dict: Dict[str, Any] = expert_dict.get("profile", {})
             profile = ProfileConfig(
-                name=profile_dict.get("name", ""), desc=profile_dict.get("desc", "")
+                name=profile_dict.get("name", ""),
+                desc=profile_dict.get("desc", ""),
+                expert_class=profile_dict.get("expert_class"),
             )
 
             # workflow configuration

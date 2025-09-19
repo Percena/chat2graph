@@ -23,6 +23,8 @@ class Profile:
 
     name: str
     description: str = ""
+    # Optional fully-qualified Expert subclass path for custom expert instantiation
+    expert_class: Optional[str] = None
 
 
 @dataclass

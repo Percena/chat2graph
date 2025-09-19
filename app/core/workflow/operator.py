@@ -1,4 +1,5 @@
 from typing import List, Optional, cast
+import os
 
 from app.core.env.insight.insight import Insight
 from app.core.model.file_descriptor import FileDescriptor
@@ -151,6 +152,9 @@ class Operator:
 
     def get_knowledge(self, job: Job) -> Knowledge:
         """Get the knowledge from the knowledge base."""
+        # Allow disabling KB to avoid unnecessary vector store calls in GAIA batch runs
+        if os.getenv("CHAT2GRAPH_DISABLE_KB", "").lower() in ("1", "true", "yes", "y"):
+            return Knowledge(global_chunks=[], local_chunks=[])
         query = "[JOB TARGET GOAL]:\n" + job.goal + "\n[INPUT INFORMATION]:\n" + job.context
         knowledge_base_service: KnowledgeBaseService = KnowledgeBaseService.instance
         return knowledge_base_service.get_knowledge(query, job.session_id)

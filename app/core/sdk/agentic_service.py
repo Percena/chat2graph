@@ -175,6 +175,45 @@ class AgenticService(metaclass=Singleton):
             ).build()
             # use mas.expert().workflow().evaluator().build() to add evaluator if needed
 
+        # 6. Replace experts with custom classes if profile.expert_class is provided
+        try:
+            leader = mas._agent_service.leader  # type: ignore[attr-defined]
+            state = leader.state
+            for expert_cfg in agentic_service_config.experts:
+                expert_class_path = getattr(expert_cfg.profile, "expert_class", None)
+                if not expert_class_path:
+                    continue
+                # find existing expert by name and replace
+                for exp in state.list_experts():
+                    if exp.get_profile().name == expert_cfg.profile.name:
+                        module_path, class_name = expert_class_path.rsplit(".", 1)
+                        module = importlib.import_module(module_path)
+                        expert_cls = getattr(module, class_name)
+                        if not issubclass(expert_cls, Expert):
+                            break
+                        from app.core.agent.agent import AgentConfig, Profile
+
+                        new_profile = Profile(
+                            name=exp.get_profile().name,
+                            description=exp.get_profile().description,
+                            expert_class=expert_class_path,
+                        )
+                        new_cfg = AgentConfig(
+                            profile=new_profile,
+                            reasoner=exp._reasoner,  # type: ignore[attr-defined]
+                            workflow=exp._workflow,  # type: ignore[attr-defined]
+                        )
+                        try:
+                            state.remove_expert(exp.get_id())
+                        except Exception:
+                            pass
+                        state.create_expert(new_cfg)
+                        break
+        except Exception as e:
+            Chat2GraphLogger.get_logger(__name__).warning(
+                f"Custom expert replacement skipped: {e}"
+            )
+
         return mas
 
     @staticmethod
