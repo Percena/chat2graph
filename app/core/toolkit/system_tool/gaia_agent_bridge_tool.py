@@ -108,13 +108,47 @@ async def run_gaia_agent(
         return "DRY_RUN_ANSWER"
 
     env = os.environ.copy()
-    env["PYTHONPATH"] = str(repo) + os.pathsep + env.get("PYTHONPATH", "")
+    existing_pythonpath = env.get("PYTHONPATH")
+    env["PYTHONPATH"] = (
+        f"{repo}{os.pathsep}{existing_pythonpath}"
+        if existing_pythonpath
+        else str(repo)
+    )
     if question_hint:
         env["GAIA_AGENT_QUESTION_HINT"] = str(question_hint)
 
-    # Use current Python interpreter to avoid external project tooling requirements
+    # Prefer the external repo's virtualenv interpreter if it exists so we pick up
+    # its dependencies (e.g. openai-agents). Fall back to the current interpreter.
+    configured_python = env.get("GAIA_AGENT_PYTHON") or os.getenv("GAIA_AGENT_PYTHON")
+    if configured_python:
+        python_path = Path(configured_python)
+        if not python_path.exists():
+            raise FileNotFoundError(
+                f"GAIA_AGENT_PYTHON={configured_python} does not exist"
+            )
+        python_bin = python_path
+    else:
+        venv_python_candidates = [
+            repo / ".venv" / "bin" / "python",
+            repo / ".venv" / "Scripts" / "python.exe",
+            repo / "venv" / "bin" / "python",
+            repo / "venv" / "Scripts" / "python.exe",
+        ]
+        python_bin = next((p for p in venv_python_candidates if p.exists()), None)
+        if python_bin:
+            env.setdefault("VIRTUAL_ENV", str(python_bin.parent.parent))
+            env["PATH"] = (
+                f"{python_bin.parent}{os.pathsep}{env.get('PATH', '')}"
+                if env.get("PATH")
+                else str(python_bin.parent)
+            )
+        else:
+            python_bin = Path(sys.executable)
+
+    logger.info(f"[gaia-agent] using python interpreter: {python_bin}")
+
     cmd = [
-        sys.executable,
+        str(python_bin),
         str(oneclick),
         "run",
         "--exp_id",
