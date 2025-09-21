@@ -68,6 +68,16 @@ def lookup_samples(
     return samples
 
 
+def extract_ground_truth(sample: dict | None) -> str:
+    if not sample:
+        return ""
+    for key in ("answer", "Final answer", "final_answer", "ground_truth", "Ground Truth"):
+        value = sample.get(key)
+        if isinstance(value, str) and value.strip():
+            return value.strip()
+    return ""
+
+
 def run_single_sample(
     sample: dict,
     memfuse_enabled: bool,
@@ -181,7 +191,7 @@ def main() -> None:
                 try:
                     result = future.result()
                     # Recompute correctness against ground truth to avoid upstream mismatch
-                    gt = str(sample_map.get(task_id, {}).get("answer", "")).strip()
+                    gt = extract_ground_truth(sample_map.get(task_id))
                     model_answer = str(result.get("model_answer", "")).strip()
                     is_correct = (model_answer == gt) if gt else bool(result.get("is_correct"))
                     result["is_correct"] = is_correct
@@ -222,7 +232,7 @@ def main() -> None:
                 dataset="auto",
                 match_task_id=task_id,
             )
-            gt = str(sample_map.get(task_id, {}).get("answer", sample_map.get(task_id, {}).get("Final answer", ""))).strip()
+            gt = extract_ground_truth(sample_map.get(task_id))
             is_correct = (str(answer).strip() == gt) if gt else False
             return {
                 "task_id": task_id,
@@ -299,7 +309,7 @@ def main() -> None:
         correct = entry.get("is_correct")
         state = "✅" if correct else "❌"
         ma = str(entry.get("model_answer", ""))[:80]
-        gt = str(sample_map.get(tid, {}).get("answer", ""))[:80]
+        gt = extract_ground_truth(sample_map.get(tid))[:80]
         print(f"  {state} task_id={tid} | answer={ma} | gt={gt}")
 
     print(f"\n📄 Results written to: {output_path}")
